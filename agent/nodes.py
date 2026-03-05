@@ -41,7 +41,7 @@ def synthesis_node(state):
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
         findings = state.get("react_findings", {})
         guidance = state.get("retrieved_guidance", [])
-        prompt = "Synthesize this research:" + json.dumps(findings) + " Guidance:" + " ".join(guidance)
+        prompt = "Synthesize this research: " + json.dumps(findings) + " Guidance: " + " ".join(guidance)
         result = llm.invoke(prompt)
         logs.append("[Synthesis] Completed")
         return {"react_findings": {**findings, "synthesis": result.content}, "logs": logs, "errors": errors}
@@ -57,11 +57,8 @@ def report_node(state):
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
         company = state["company_name"]
         findings = state.get("react_findings", {})
-        prompt = "Create a Markdown report for " + company
-        prompt += " with: ## Executive Summary ## Financial Overview"
-        prompt += " ## Recent News & Sentiment ## Competitive Landscape"
-        prompt += " ## Market Position ## Strategic Assessment"
-        prompt += " Based on: " + json.dumps(findings)
+        bundle = state.get("research_bundle", {})
+        prompt = "You are a professional financial analyst. Create a detailed Markdown report for " + company + ". Use ONLY the real data provided. REAL API DATA: " + json.dumps(bundle) + " AGENT ANALYSIS: " + json.dumps(findings) + " Write with sections: ## Executive Summary ## Financial Overview ## Recent News & Sentiment ## Competitive Landscape ## Market Position ## Strategic Assessment. Include key risks and strategic recommendations."
         result = llm.invoke(prompt)
         logs.append("[Report] Completed")
         return {"draft_report": result.content, "logs": logs, "errors": errors}
@@ -75,9 +72,7 @@ def validation_node(state):
     try:
         logs.append("[Validation] Starting")
         report = state.get("draft_report", "")
-        required = ["## Executive Summary", "## Financial Overview",
-                    "## Recent News & Sentiment", "## Competitive Landscape",
-                    "## Market Position", "## Strategic Assessment"]
+        required = ["## Executive Summary", "## Financial Overview", "## Recent News & Sentiment", "## Competitive Landscape", "## Market Position", "## Strategic Assessment"]
         missing = [s for s in required if s not in report]
         if missing or len(report.split()) < 300:
             logs.append("[Validation] FAIL")
