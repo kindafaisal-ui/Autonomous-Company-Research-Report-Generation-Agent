@@ -1,0 +1,32 @@
+# agent/state.py
+from typing import TypedDict, List, Dict, Any
+
+
+class ResearchState(TypedDict):
+
+    # ── INPUT ──────────────────────────────────────────────────
+    company_name:       str            # e.g. "Apple" — set by runner.py from n8n
+
+    # ── RAW DATA FROM n8n ──────────────────────────────────────
+    research_bundle:    Dict[str, Any] # Merged JSON: Serper + Guardian + AlphaVantage
+
+    # ── RAG OUTPUT ────────────────────────────────────────────
+    retrieved_guidance: List[str]      # Top-k chunks from Pinecone
+
+    # ── REACT AGENT OUTPUT ────────────────────────────────────
+    react_findings:     Dict[str, Any]
+    # Expected keys:
+    #   "financial_summary"   : str
+    #   "news_summary"        : str
+    #   "competitor_analysis" : str
+
+    # ── REPORT ────────────────────────────────────────────────
+    draft_report:       str            # Final Markdown report string
+
+    # ── CONTROL FLOW ──────────────────────────────────────────
+    validation_flag:    bool           # True = report passed validation
+    retry_count:        int            # Max 1 retry allowed
+
+    # ── OBSERVABILITY ─────────────────────────────────────────
+    logs:               List[str]      # Append-only trace log
+    errors:             List[str]      # All caught exceptions

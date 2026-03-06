@@ -1,0 +1,302 @@
+path = "/Users/kindafaisalhotmail.com/Desktop/week5/project /agent/templates/index.html"
+
+html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>INTEL - Company Research Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0a0a; --surface: #111; --border: #222;
+      --accent: #c8f135; --accent2: #3bf5b0;
+      --text: #f0f0f0; --muted: #555; --danger: #ff4d4d;
+      --head: 'Syne', sans-serif; --mono: 'DM Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--mono); min-height: 100vh; }
+    body::before {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image: linear-gradient(rgba(200,241,53,0.03) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(200,241,53,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    header {
+      position: relative; z-index: 10;
+      border-bottom: 1px solid var(--border);
+      padding: 20px 40px; display: flex;
+      align-items: center; justify-content: space-between;
+    }
+    .logo { font-family: var(--head); font-size: 22px; font-weight: 800; letter-spacing: .15em; color: var(--accent); }
+    .logo span { color: var(--muted); font-weight: 400; }
+    .pill { font-size: 11px; letter-spacing: .1em; padding: 4px 12px; border: 1px solid var(--border); border-radius: 20px; color: var(--muted); }
+    .pill.on { border-color: var(--accent2); color: var(--accent2); }
+    main { position: relative; z-index: 10; max-width: 900px; margin: 0 auto; padding: 60px 40px 100px; }
+    .hero { margin-bottom: 60px; animation: fadeUp 0.6s ease both; }
+    .tag { font-size: 11px; letter-spacing: .2em; color: var(--accent); text-transform: uppercase; margin-bottom: 16px; }
+    h1 { font-family: var(--head); font-size: clamp(36px,6vw,64px); font-weight: 800; line-height: 1.05; margin-bottom: 20px; }
+    h1 em { font-style: normal; color: var(--accent); }
+    .sub { font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 500px; }
+    .input-label { font-size: 11px; letter-spacing: .15em; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; display: block; }
+    .row { display: flex; gap: 12px; margin-bottom: 50px; }
+    input {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 4px; padding: 16px 20px;
+      font-family: var(--head); font-size: 18px; font-weight: 600;
+      color: var(--text); outline: none; transition: border-color .2s;
+    }
+    input::placeholder { color: var(--muted); font-weight: 400; }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(200,241,53,.08); }
+    button.run {
+      background: var(--accent); color: #0a0a0a; border: none; border-radius: 4px;
+      padding: 16px 28px; font-family: var(--head); font-size: 13px; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase; cursor: pointer; transition: all .2s;
+    }
+    button.run:hover { background: #d4f54a; transform: translateY(-1px); }
+    button.run:disabled { background: var(--muted); cursor: not-allowed; transform: none; }
+    #loading { display: none; margin: 40px 0; }
+    .lhead { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .spinner {
+      width: 16px; height: 16px; border: 2px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    .llabel { font-size: 12px; letter-spacing: .15em; color: var(--accent); text-transform: uppercase; }
+    .steps { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .step {
+      font-size: 12px; color: var(--muted); padding: 10px 16px;
+      border: 1px solid var(--border); border-radius: 3px;
+      display: flex; align-items: center; gap: 10px; transition: all .3s;
+    }
+    .step.active { color: var(--text); border-color: var(--accent); background: rgba(200,241,53,.04); }
+    .step.done { color: var(--accent2); border-color: rgba(59,245,176,.3); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .step.active .dot { background: var(--accent); animation: pulse 1s infinite; }
+    .step.done .dot { background: var(--accent2); }
+    #error { display: none; background: rgba(255,77,77,.06); border: 1px solid rgba(255,77,77,.3); border-radius: 4px; padding: 20px 24px; margin: 24px 0; }
+    .elabel { font-size: 11px; letter-spacing: .15em; color: var(--danger); text-transform: uppercase; margin-bottom: 8px; }
+    .emsg { font-size: 13px; color: #ccc; }
+    #output { display: none; }
+    .ohead {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+    }
+    .otitle { font-family: var(--head); font-size: 13px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; color: var(--accent); }
+    .ometa { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .dlbtn {
+      background: transparent; border: 1px solid var(--border); border-radius: 3px;
+      padding: 8px 16px; font-family: var(--mono); font-size: 11px;
+      letter-spacing: .1em; color: var(--muted); cursor: pointer; transition: all .2s; text-transform: uppercase;
+    }
+    .dlbtn:hover { border-color: var(--accent2); color: var(--accent2); }
+    .report {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; padding: 40px; line-height: 1.8;
+    }
+    .report h1, .report h2, .report h3 { font-family: var(--head); font-weight: 700; margin: 32px 0 14px; }
+    .report h1 { font-size: 28px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .report h2 { font-size: 18px; color: var(--accent); }
+    .report h3 { font-size: 14px; color: var(--accent2); text-transform: uppercase; letter-spacing: .1em; }
+    .report p { font-size: 13px; color: #ccc; margin-bottom: 14px; }
+    .report ul, .report ol { margin: 12px 0 16px 20px; }
+    .report li { font-size: 13px; color: #ccc; margin-bottom: 6px; }
+    .report strong { color: var(--text); }
+    .report code { background: rgba(200,241,53,.08); color: var(--accent); padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+    .report hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+    #history { margin-top: 60px; display: none; }
+    .hlabel { font-size: 11px; letter-spacing: .15em; color: var(--muted); text-transform: uppercase; margin-bottom: 16px; }
+    .hitem {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 3px;
+      cursor: pointer; transition: border-color .2s; margin-bottom: 8px;
+    }
+    .hitem:hover { border-color: var(--accent); }
+    .hco { font-family: var(--head); font-size: 14px; font-weight: 600; }
+    .htime { font-size: 11px; color: var(--muted); }
+    footer {
+      position: relative; z-index: 10; border-top: 1px solid var(--border);
+      padding: 20px 40px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .ftxt { font-size: 11px; color: var(--muted); }
+    .fstack { display: flex; gap: 10px; }
+    .ftag { font-size: 11px; color: var(--muted); padding: 3px 8px; border: 1px solid var(--border); border-radius: 2px; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">INTEL<span>.ai</span></div>
+  <div class="pill" id="pill">SYSTEM READY</div>
+</header>
+<main>
+  <div class="hero">
+    <div class="tag">Autonomous Research Agent</div>
+    <h1>Company<br/><em>Intelligence</em><br/>On Demand</h1>
+    <p class="sub">Enter any company name. The agent searches the web, retrieves news, pulls financials, and generates a structured strategic report automatically.</p>
+  </div>
+  <label class="input-label" for="ci">Target Company</label>
+  <div class="row">
+    <input id="ci" type="text" placeholder="e.g. Apple, Tesla, OpenAI..." autocomplete="off"/>
+    <button class="run" id="rb" onclick="run()">Run Analysis &rarr;</button>
+  </div>
+  <div id="loading">
+    <div class="lhead">
+      <div class="spinner"></div>
+      <div class="llabel">Agent Running &mdash; <span id="lco"></span></div>
+    </div>
+    <ul class="steps">
+      <li class="step" id="s1"><span class="dot"></span>Searching web via Serper API</li>
+      <li class="step" id="s2"><span class="dot"></span>Fetching news from The Guardian</li>
+      <li class="step" id="s3"><span class="dot"></span>Pulling financials from Alpha Vantage</li>
+      <li class="step" id="s4"><span class="dot"></span>Running ReAct reasoning loop</li>
+      <li class="step" id="s5"><span class="dot"></span>Retrieving RAG guidance from Pinecone</li>
+      <li class="step" id="s6"><span class="dot"></span>Synthesising strategic report</li>
+      <li class="step" id="s7"><span class="dot"></span>Validating report completeness</li>
+    </ul>
+  </div>
+  <div id="error">
+    <div class="elabel">Error</div>
+    <div class="emsg" id="emsg"></div>
+  </div>
+  <div id="output">
+    <div class="ohead">
+      <div>
+        <div class="otitle">Intelligence Report</div>
+        <div class="ometa" id="ometa"></div>
+      </div>
+      <button class="dlbtn" onclick="dl()">Download .md</button>
+    </div>
+    <div class="report" id="report"></div>
+  </div>
+  <div id="history">
+    <div class="hlabel">Previous Runs</div>
+    <div id="hitems"></div>
+  </div>
+</main>
+<footer>
+  <div class="ftxt">INTEL.ai - AI Bootcamp Project</div>
+  <div class="fstack">
+    <span class="ftag">LangGraph</span>
+    <span class="ftag">ReAct</span>
+    <span class="ftag">Pinecone</span>
+    <span class="ftag">n8n</span>
+  </div>
+</footer>
+<script>
+  let report = "", company = "", rpath = "", hist = [];
+  let si = 0, st = null;
+
+  function startSteps() {
+    si = 0;
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active','done'));
+    nextStep();
+  }
+
+  function nextStep() {
+    const steps = document.querySelectorAll('.step');
+    if (si > 0) steps[si-1].classList.replace('active','done');
+    if (si < steps.length) {
+      steps[si].classList.add('active');
+      si++;
+      st = setTimeout(nextStep, 2800);
+    }
+  }
+
+  function doneSteps() {
+    clearTimeout(st);
+    document.querySelectorAll('.step').forEach(s => { s.classList.remove('active'); s.classList.add('done'); });
+  }
+
+  function pill(t, on) {
+    const p = document.getElementById('pill');
+    p.textContent = t;
+    p.className = 'pill' + (on ? ' on' : '');
+  }
+
+  async function run() {
+    const val = document.getElementById('ci').value.trim();
+    if (!val) { document.getElementById('ci').focus(); return; }
+    company = val;
+    document.getElementById('output').style.display = 'none';
+    document.getElementById('error').style.display = 'none';
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('lco').textContent = val.toUpperCase();
+    document.getElementById('rb').disabled = true;
+    pill('AGENT RUNNING', true);
+    startSteps();
+    try {
+      const res = await fetch('/analyze', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({company: val})
+      });
+      const data = await res.json();
+      doneSteps();
+      document.getElementById('loading').style.display = 'none';
+      if (data.status === 'error' || !data.report_path) {
+        document.getElementById('emsg').textContent = data.message || 'Unknown error.';
+        document.getElementById('error').style.display = 'block';
+        pill('ERROR', false);
+      } else {
+        const rres = await fetch('/report?path=' + encodeURIComponent(data.report_path));
+        const txt = await rres.text();
+        report = txt; rpath = data.report_path;
+        showReport(val, txt, data);
+      }
+    } catch(e) {
+      doneSteps();
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('emsg').textContent = 'Cannot connect to server. Make sure server.py is running on port 5000.';
+      document.getElementById('error').style.display = 'block';
+      pill('ERROR', false);
+    }
+    document.getElementById('rb').disabled = false;
+    pill('SYSTEM READY', false);
+  }
+
+  function showReport(co, md, data) {
+    const now = new Date().toLocaleString();
+    document.getElementById('ometa').textContent = co.toUpperCase() + ' - ' + now;
+    document.getElementById('report').innerHTML = marked.parse(md);
+    document.getElementById('output').style.display = 'block';
+    hist.unshift({co, md, now});
+    renderHist();
+    setTimeout(() => document.getElementById('output').scrollIntoView({behavior:'smooth'}), 100);
+  }
+
+  function dl() {
+    const b = new Blob([report], {type:'text/markdown'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = company.replace(/\s+/g,'_') + '_report.md';
+    a.click();
+  }
+
+  function renderHist() {
+    if (!hist.length) return;
+    document.getElementById('history').style.display = 'block';
+    document.getElementById('hitems').innerHTML = hist.map((h,i) =>
+      '<div class="hitem" onclick="loadH(' + i + ')"><span class="hco">' + h.co + '</span><span class="htime">' + h.now + '</span></div>'
+    ).join('');
+  }
+
+  function loadH(i) {
+    const h = hist[i];
+    report = h.md; company = h.co;
+    showReport(h.co, h.md, {});
+  }
+
+  document.getElementById('ci').addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+</script>
+</body>
+</html>"""
+
+with open(path, "w") as f:
+    f.write(html)
+
+print("Done! Bytes written:", len(html))

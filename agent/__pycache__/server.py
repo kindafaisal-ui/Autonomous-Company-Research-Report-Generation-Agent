@@ -1,9 +1,16 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template, send_file
+from flask_cloudflared import run_with_cloudflared
 import json
 import subprocess
 import sys
+import os
 
 app = Flask(__name__)
+run_with_cloudflared(app)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/research', methods=['POST'])
 def research():
@@ -16,8 +23,4 @@ def research():
             cwd='/Users/kindafaisalhotmail.com/Desktop/week5/project '
         )
         return jsonify(json.loads(result.stdout))
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
-
-if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    e
