@@ -5,8 +5,7 @@ import sys
 import os
 
 app = Flask(__name__)
-
-PROJECT_DIR = '/app'
+PROJECT_DIR = '/Users/kindafaisalhotmail.com/Desktop/week5/project '
 
 @app.route('/')
 def index():
@@ -15,16 +14,37 @@ def index():
 @app.route('/analyze', methods=['POST'])
 def analyze():
     try:
-        data = request.json
+        data = request.json or {}
+        print("SERVER RECEIVED:", json.dumps(data)[:500], flush=True)
+        
+        company = data.get('company', '').lstrip('=').strip() or 'Unknown'
+        
+        # Build research bundle from whatever n8n sends
+        research_bundle = {}
+        if 'research_bundle' in data and data['research_bundle']:
+            research_bundle = data['research_bundle']
+        else:
+            # n8n sent flat structure
+            if 'serper' in data:
+                research_bundle['serper'] = data['serper']
+            if 'guardian' in data:
+                research_bundle['guardian'] = data['guardian']
+            if 'alphavantage' in data:
+                research_bundle['alphavantage'] = data['alphavantage']
+
+        payload = {'company': company, 'research_bundle': research_bundle}
+        print("PAYLOAD TO RUNNER:", json.dumps(payload)[:200], flush=True)
+        
         result = subprocess.run(
-            [sys.executable, 'runner.py', json.dumps(data)],
+            [sys.executable, 'runner.py', json.dumps(payload)],
             capture_output=True,
             text=True,
             cwd=PROJECT_DIR
         )
         if result.returncode != 0:
             return jsonify({"status": "error", "message": result.stderr})
-        return jsonify(json.loads(result.stdout))
+        lines = [l for l in result.stdout.strip().split('\n') if l.startswith('{')]
+        return jsonify(json.loads(lines[-1]))
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 

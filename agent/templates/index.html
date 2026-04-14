@@ -233,7 +233,7 @@
     pill('AGENT RUNNING', true);
     startSteps();
     try {
-      const res = await fetch('/analyze', {
+      const res = await fetch('http://localhost:5678/webhook/research', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({company: val, ticker: ticker})
