@@ -1,0 +1,959 @@
+{
+  "name": "Company Research Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "research",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ab1717d3-cd0d-42b9-847e-c97649953a35",
+      "name": "Webhook",
+      "webhookId": "4de2fc22-161c-46ad-b7d0-78c51008c36b"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "8db97d2b8af55c3bd0fb4653385bdb0dddb38b83"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.query }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        416,
+        0
+      ],
+      "id": "905ade0a-05c4-4314-8572-273ed0f6312e",
+      "name": "Serper HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst results = data.organic || [];\n\nconst cleaned = results.slice(0, 5).map(r => ({\n  title: r.title || \"\",\n  snippet: r.snippet || \"\",\n  link: r.link || \"\"\n}));\n\nreturn [{\n  json: {\n    company: $('Normalize Input').first().json.company,\n    query: $('Normalize Input').first().json.query,\n    serper_results: cleaned\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        0
+      ],
+      "id": "ad9d7d29-12a0-482b-bf97-64676e24bf39",
+      "name": "Serper Clean"
+    },
+    {
+      "parameters": {
+        "url": "https://content.guardianapis.com/search",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "={\n  \"q\": \"{{ $('Normalize Input').first().json.company }}\",\n \"api-key\":\"0d07024b-d1f9-4055-9072-e03d15f84197\",\n  \"show-fields\": \"bodyText\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        784,
+        0
+      ],
+      "id": "23f93ccf-04f2-4fe0-a37e-6ba24eecdbd2",
+      "name": "Guardian - News"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst results = data.response?.results || [];\n\nconst cleaned = results.slice(0, 5).map(r => ({\n  title: r.webTitle || \"\",\n  body: r.fields?.bodyText?.slice(0, 500) || \"\",\n  link: r.webUrl || \"\"\n}));\n\nreturn [{\n  json: {\n    company: $('Normalize Input').first().json.company,\n    query: $('Normalize Input').first().json.query,\n    serper_results: $('Serper Clean').first().json.serper_results,\n    guardian_results: cleaned\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ],
+      "id": "1b356bcd-c161-4ab9-818c-7b02f5885cd6",
+      "name": "Clean Guardian Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst company = body.company || body.query || body.input || \"Unknown Company\";\n\nreturn [{\n  json: {\n    company: company.trim(),\n    query: `${company.trim()} company overview financials news 2024`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "20732273-fd05-4e2c-8656-bce718b747fc",
+      "name": "Normalize Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nreturn [{\n  json: {\n    company: data.company,\n    query: data.query,\n    serper_results: data.serper_results,\n    guardian_results: data.guardian_results,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        0
+      ],
+      "id": "1dbd4815-1233-415d-961b-59676a072597",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "url": "https://www.alphavantage.co/query",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "{\n  \"function\": \"OVERVIEW\",\n  \"symbol\": \"AAPL\",\n  \"apikey\": \"F0XPWFKJEMXRWLVN\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1376,
+        0
+      ],
+      "id": "02954451-81e0-442d-b41e-d7ba2c9ec8ba",
+      "name": "Alpha"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Clean Guardian Output').first().json;\nconst alpha = $input.first().json;\n\nreturn [{\n  json: {\n    company: data.company,\n    query: data.query,\n    serper_results: data.serper_results,\n    guardian_results: data.guardian_results,\n    alpha_data: {\n      name: alpha.Name || \"\",\n      description: alpha.Description || \"\",\n      sector: alpha.Sector || \"\",\n      industry: alpha.Industry || \"\",\n      market_cap: alpha.MarketCapitalization || \"\",\n      pe_ratio: alpha.PERatio || \"\",\n      revenue: alpha.RevenueTTM || \"\"\n    },\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        0
+      ],
+      "id": "616da741-2d8a-4ca3-b9cb-723e770e794f",
+      "name": "Final Bundle"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5000/analyze",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "company",
+              "value": "={{ $('Final Bundle').first().json.company }}"
+            },
+            {
+              "name": "serper",
+              "value": "={{ $('Final Bundle').first().json.serper_results }}"
+            },
+            {
+              "name": "guardian",
+              "value": "={{ $('Final Bundle').first().json.guardian_results }}"
+            },
+            {
+              "name": "alphavantage",
+              "value": "={{ $('Final Bundle').first().json.alpha_data }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1744,
+        -16
+      ],
+      "id": "40778c21-6aca-41f8-92a0-858cfbb030d0",
+      "name": "Send to LangGraph"
+    }
+  ],
+  "pinData": {
+    "Guardian - News": [
+      {
+        "json": {
+          "response": {
+            "status": "ok",
+            "userTier": "developer",
+            "total": 44819,
+            "startIndex": 1,
+            "pageSize": 10,
+            "currentPage": 1,
+            "pages": 4482,
+            "orderBy": "relevance",
+            "results": [
+              {
+                "id": "technology/2026/apr/01/apple-at-50-quiz",
+                "type": "article",
+                "sectionId": "technology",
+                "sectionName": "Technology",
+                "webPublicationDate": "2026-04-01T14:46:30Z",
+                "webTitle": "Apple at 50 quiz: top sellers, turkeys and turtlenecks",
+                "webUrl": "https://www.theguardian.com/technology/2026/apr/01/apple-at-50-quiz",
+                "apiUrl": "https://content.guardianapis.com/technology/2026/apr/01/apple-at-50-quiz",
+                "fields": {
+                  "bodyText": "In the 50 years since it was founded, Apple has long been seen as one of the most significant technology companies globally. The design and manufacturing decisions taken in Cupertino, California have affected product design across the world, helping usher in an era of ubiquitous touchscreen computing while insisting on exacting user experience design principles. How much do you know about the history of one of the most powerful computing companies on the planet? Test yourself with these 12 questions. The Guardian’s Apple at 50 quiz"
+                },
+                "isHosted": false,
+                "pillarId": "pillar/news",
+                "pillarName": "News"
+              },
+              {
+                "id": "technology/2026/mar/23/iphone-17e-review-apple-cheapest-new-smartphone-chip-magsafe-storage",
+                "type": "article",
+                "sectionId": "technology",
+                "sectionName": "Technology",
+                "webPublicationDate": "2026-03-23T07:00:44Z",
+                "webTitle": "iPhone 17e review: Apple upgrades its cheapest new smartphone",
+                "webUrl": "https://www.theguardian.com/technology/2026/mar/23/iphone-17e-review-apple-cheapest-new-smartphone-chip-magsafe-storage",
+                "apiUrl": "https://content.guardianapis.com/technology/2026/mar/23/iphone-17e-review-apple-cheapest-new-smartphone-chip-magsafe-storage",
+                "fields": {
+                  "bodyText": "The cheapest new iPhone has been upgraded for this year with a faster chip, double the storage, automatic portraits and MagSafe, providing even more of the core Apple smartphone experience for less. The iPhone 17e is an upgraded version of the mid-range “e” line launched last year with the first iPhone 16e and is the latest member of the iPhone 17 family. It starts at £599 (€699/$599/A$999), undercutting the iPhone 17 and iPhone 16 by £200 and £100 respectively to be the cheapest new iPhone sold by Apple. The new 17e is the spitting image of the model it replaces, giving it the older iPhone 14-like design with a large notch at the top of the screen and a slower 6.1in OLED screen. The aluminium sides feel great and the screen glass has been upgraded to the latest Ceramic Shield 2, which is tougher and includes an extremely effective anti-glare treatment that makes it a lot easier to see outdoors. Specifications Screen: 6.1in Super Retina XDR (OLED) (460ppi) Processor: Apple A19 (4-core GPU) RAM: 8GB Storage: 256 or 512GB Operating system: iOS 26 Camera: 48MP rear; 12MP front-facing Connectivity: 5G, wifi 6, NFC, Bluetooth 5.3, USB-C, Satellite and GNSS Water resistance: IP68 (6 metres for 30 mins) Dimensions: 146.7 x 71.5 x 7.8mm Weight: 170g Fast chip and long battery life The 17e has the A19 chip from the regular iPhone 17 but with one less GPU core, which reduces graphics performance slightly. Not that anyone will probably notice, as the phone is very fast and still capable of handling top-spec games. It also has a decent 256GB of storage as standard, which should be enough space for most with additional cloud backup. The battery life is great, too, lasting a good 52 hours between charges with general usage across 5G and wifi, meaning most will need to charge it every other night. The 17e lacks a few of the more advanced hardware features common to Apple’s other phones, including wifi 7, Thread and Ultra Wideband (UWB), the latter of which is used for the precision finding tool and for some digital car keys, among other features. Sustainability The battery should last in excess of 1,000 full-charge cycles, with at least 80% of its original capacity, and can be replaced for £95. Out-of-warranty screen repairs cost £225. The 17e has repair guides available and was awarded seven out of 10 for repairability by the specialists iFixit. It contains more than 30% recycled material including aluminium, cobalt, copper, glass, gold, lithium, plastic, rare earth elements, steel, tin and tungsten. The company breaks down the phone’s environmental impact in its report, and offers trade-in and free recycling schemes including for non-Apple products. Camera The 17e has a single 48MP camera on the back and therefore, like the iPhone Air, lacks ultrawide and telephoto options, which means if you physically cannot move back or forwards to your subject you will not be able to get the shot. The camera at least captures good photos across a range of lighting conditions and can manage a 2x crop zoom for a tiny bit of magnification. It also now automatically captures portrait shots from the main photo mode, allowing you to change the focus and depth of a picture after the fact. The 17e lacks a macrophotography mode, which is a shame. It also has the same 12MP selfie camera from older iPhones, which is fine, rather than Apple’s latest 18MP automatic panning Centre Stage camera. Price The iPhone 17e costs from £599 (€699/$599/A$999) with 256GB of storage. For comparison, the iPhone 17 costs £799, the iPhone Air costs £999, the Google Pixel 10a costs £499 and the Samsung Galaxy S25 FE costs £499. Verdict Apple is slowly adding more of the core iPhone features to its cheaper “e” line, which makes the iPhone 17e a better buy than last year’s iPhone 16e. That includes most of what you would expect: a fast chip, Face ID, MagSafe, long battery life and access to all the software. The screen is decent but slower and less smooth than the rest of the iPhone 17 line. The older design lacks the camera control button, an always-on screen and has a large notch at the top, but still feels good in the hand. One of the biggest downsides is the single camera on the back, which captures great photos but limits the type of shots you can get. If you are at all interested in photography, this is not the phone for you. As with its predecessor, the 17e only makes sense if you want the absolute cheapest new iPhone Apple sells and will not settle for anything else. For everyone else the iPhone 16 is available new from third-party retailers for about the same price or less refurbished. Pros: fast, decent screen, great size, action button, USB-C, great battery life, MagSafe, long software support, Face ID, at least 256GB storage. Cons: single camera only and no macro mode, no camera control button, old-style screen design, no wifi 7, no Thread or UWB, still expensive."
+                },
+                "isHosted": false,
+                "pillarId": "pillar/news",
+                "pillarName": "News"
+              },
+              {
+                "id": "fashion/2026/feb/20/colour-of-the-moment-apple-green-golden-globes-baftas",
+                "type": "article",
+                "sectionId": "fashion",
+                "sectionName": "Fashion",
+                "webPublicationDate": "2026-02-20T13:15:16Z",
+                "webTitle": "Meet the colour of the moment: apple green",
+                "webUrl": "https://www.theguardian.com/fashion/2026/feb/20/colour-of-the-moment-apple-green-golden-globes-baftas",
+                "apiUrl": "https://content.guardianapis.com/fashion/2026/feb/20/colour-of-the-moment-apple-green-golden-globes-baftas",
+                "fields": {
+                  "bodyText": "On the fashion colour wheel, green has long carried a reputation for being “tricky” – a shade that clashes with others and flatters only certain skin tones. Yet this year, a particular apple green has been steadily gaining popularity. It has appeared on catwalks and even on the red carpet, defying the old adage that red and green should never be seen. Arriving at the Berlin film festival, Pamela Anderson wore an apple-green wrap by Carolina Herrera over a dress in tonal pinks and greens. Amal Clooney chose a green gown by Versace for a Golden Globes afterparty, while Rose Byrne wore green Chanel for the ceremony itself. With award season in full swing, there is speculation the shade could make a strong showing at the Baftas this Sunday. The fashion writer Natalie Hammond suggests it may be “the new tomato” – a bold shade that works particularly well as an accent shade, whether in the form of a green scarf or a jumper knotted around the waist. “I saw both of those coming out of New York fashion week,” she says. Hammond argues that green is a winner on the red carpet, despite the the fact that the two colours are traditionally seen as clashing. She says: “It’s different from what you usually see, namely a lot of black, white, red and metallic gowns. Green is traditionally a colour that’s soothing, but on the red carpet it can be something else entirely – sophisticated [and] intentional.” The green trend extends beyond high-end designers and celebrities. John Lewis has embraced the colour for spring, while Depop reported that searches for green rose by 47% in January. John Lewis’s design director, Queralt Ferrer, echoes the idea that the shade may be edging out red. “Spring 2026 will introduce fresh pops of colour, with green taking centre stage as the season’s hero hue,” Ferrer says. For those hesitant to experiment, she advises starting small: “If you’re new to colour, try adding an accessory, like ballet flats, or make more of a statement by layering in a jumper or cardigan.”"
+                },
+                "isHosted": false,
+                "pillarId": "pillar/lifestyle",
+                "pillarName": "Lifestyle"
+              },
+              {
+                "id": "technology/2026/mar/30/apple-subsidiary-fine-uk-government-sanctions-russia",
+                "type": "article",
+                "sectionId": "technology",
+                "sectionName": "Technology",
+                "webPublicationDate": "2026-03-30T12:49:53Z",
+                "webTitle": "Apple subsidiary fined by UK government over Moscow sanctions breach",
+                "webUrl": "https://www.theguardian.com/technology/2026/mar/30/apple-subsidiary-fine-uk-government-sanctions-russia",
+                "apiUrl": "https://content.guardianapis.com/technology/2026/mar/30/apple-subsidiary-fine-uk-government-sanctions-russia",
+                "fields": {
+                  "bodyText": "The UK government has fined a subsidiary of Apple £390,000 for breaching sanctions against Moscow over payments it made to a Russian streaming platform. Apple Distribution International (ADI), based in the Republic of Ireland, instructed an unnamed UK-based bank to make two payments to a company owned by a sanctioned Russian entity. The payments, worth more than £635,000 in total, were made to the streaming service Okko from an ADI bank account based in Britain. ADI is responsible for selling Apple products in Europe and the Middle East, including from the iPhone maker’s app store. The fine was imposed by the Office of Financial Sanctions Implementation (OFSI), the UK’s sanctions watchdog and part of the Treasury. “OFSI imposed a monetary penalty on ADI because it was satisfied, in relation to these payments, that on the balance of probabilities ADI had breached prohibitions imposed by financial sanctions legislation,” the watchdog said. Okko had been bought by Sberbank, Russia’s largest bank, in 2018 but after the Russian invasion of Ukraine in February 2022 it was sold to a company called JSC New Opportunities, which was placed under sanctions by the UK government in June 2022. The Okko payments were made in June and July of that year. Sberbank was among the first Russian companies to be added to the UK’s sanctions list after Russia’s full-scale invasion of Ukraine. The Foundation for Defense of Democracies, a US thinktank, said the sale of Okko by Sberbank to an “obscure company” was probably an “attempt to shield those assets from western sanctions”. JSC New Opportunities was created in March 2022. OFSI said ADI voluntarily disclosed the payments and the fine had been imposed after settlement talks. It said ADI had no reason to suspect that the payments would have been in breach of sanctions. “Whilst there were publicly available press articles stating that Okko was wholly owned by a designated person, there is no evidence that ADI was aware of those press articles at the relevant time or that third-party diligence providers were aware of this information,” OFSI said. It said the case underlined that non-UK companies could be found in breach of sanctions if they used UK financial institutions to conduct payments. It added that firms should ensure they have robust due diligence frameworks to monitor their client and customer base, and that using third-party sanctions screening firms – as the tech company did – carried risks. An Apple spokesperson said: “We follow the laws in the countries where we operate and take sanctions compliance extremely seriously. After identifying two payments to a developer that days earlier had become affiliated with a sanctioned entity, we promptly and proactively reported our finding to the UK government. We are constantly working to enhance our already robust compliance protocols, which are consistent with industry standards.”"
+                },
+                "isHosted": false,
+                "pillarId": "pillar/news",
+                "pillarName": "News"
+              },
+              {
+                "id": "food/2025/oct/15/toffee-apple-pie-apple-crumb-loaf-recipes-nicola-lamb",
+                "type": "article",
+                "sectionId": "food",
+                "sectionName": "Food",
+                "webPublicationDate": "2025-10-15T05:00:15Z",
+                "webTitle": "Nicola Lamb’s recipes for toffee apple pie and apple crumb loaf",
+                "webUrl": "https://www.theguardian.com/food/2025/oct/15/toffee-apple-pie-apple-crumb-loaf-recipes-nicola-lamb",
+                "apiUrl": "https://content.guardianapis.com/food/2025/oct/15/toffee-apple-pie-apple-crumb-loaf-recipes-nicola-lamb",
+                "fields": {
+                  "bodyText": "It’s easy to forget just how extraordinary apples can be. Often relegated to less exciting regions of the fruit bowl, they actually come in a dizzying array of varieties – sharp, sweet, floral, crisp – and each with their own quirks. And now is the time to celebrate apples, so this week I’m giving them the attention they deserve in a no-bake toffee apple pie (banoffee’s autumn cousin) and a soft, cinnamon-spiced crumb cake. Toffee apple pie (pictured top) You will need a 23cm loose-bottomed tart tin. Prep 10 min Cook 1 hr 10 min Chill 2 hr+ Serves 8-10 For the case 275g digestive biscuits ¼ tsp fine sea salt 1 tsp ground cinnamon 140g unsalted butter, melted For the caramelised apples 500g apples, I used braeburn, but pink lady work well, too 70g caster sugar 30g butter 1 tsp lemon juice For the sour cream whip 50g sour cream 250ml double cream 25g caster sugar To assemble 397g tin dulce de leche (I used Carnation) 25g roasted hazelnuts, roughly chopped For the biscuit base, blitz or bash the digestives into fine crumbs. Mix in the salt and cinnamon, then pour in the melted butter and mix well until it has the texture of very wet sand and clumps together when you give it a gentle squeeze. Press evenly into a 23cm loose-bottomed tart tin (put a disc of baking paper on the base for an easier release later), starting with the edges and working your way into the base. Put the tin in the fridge to firm up. Meanwhile, peel and core the apples, then cut them into even slices, about 1cm wide (you should have about 400g). In a low, wide frying pan, add the caster sugar and heat over a medium-high heat until it starts to melt, caramelise, and even burn in places – three to four minutes. Add the butter and apples, then reduce the heat to medium-low and let the mixture come to a bubble. Lower the heat, then simmer the apples in the juices for about 10 minutes, or until tender. (Depending on the variety, you might get a mixture of mushier and firmer pieces.) Stir in the lemon juice, then remove the pan from the heat and leave to cool. To assemble, beat the dulce de leche until smooth, then spread evenly over the biscuit base. Arrange the apple slices (avoiding the juices) on top in slightly overlapping concentric circles and in a single layer. Reserve the apple caramel juices for finishing the tart. Whip all the ingredients for the sour cream whip together until you get soft peaks. Pile the cream on top of the apples, giving it a pleasing swoop. Arrange the hazelnuts on top, then finish with drizzles of the caramelised apple juices. Chill for two to three hours before serving. Apple crumb loaf Prep 5 min Cook 1 hr 10 min Serves 6-8 You will need a 21.5cm x 11.5cm x 6cm loaf pan. For the cake 2 medium-sized eating apples 1½ tsp cinnamon 150g unsalted butter 75g caster sugar 100g light brown sugar 2 eggs, about 100g 1 tsp vanilla extract 150g plain flour 50g wholemeal flour 1 tsp bicarbonate of soda (6g) ¼ tsp fine salt For the crumb 40g light brown sugar 60g plain flour A pinch of salt 30g oats 40g butter, melted Heat the oven to 180C (160C fan)/350F/gas 4. Halve and core one apple (no need to peel), then cut it into 2mm slices (you should get about 120-130g). Toss with the cinnamon in a bowl and set aside. Grate the other apple on the coarse side of a box grater – you need about 100g. For the cake, cream the butter and sugars for about two minutes until slightly pale and about one and a half times their original volume. Add the eggs one at a time, mixing well between each addition, followed by the grated apple and vanilla extract. Stir through the dry ingredients to form a batter. Line the loaf tin with baking paper, then spoon in about 80% of the mixture. Arrange the thinly sliced cinnamon apples on top in overlapping layers, then top with the remaining mixture, smoothing the top. Bake for 15 minutes. Meanwhile, make the crumb. Mix together the dry ingredients in a bowl (you can use the cinnamon apple bowl for less washing up!), then pour in the melted butter and mix again until a crumb forms. Carefully remove the cake from the oven and sprinkle the oat crumb all over the top. Return to the oven for 35-40 minutes, or until a toothpick or skewer inserted into the centre of the cake comes out clean. Leave to cool completely in the tin before serving. Nicola Lamb is a pastry chef and author of the weekly Kitchen Projects newsletter and Sift, published by Ebury Press at £30. To order a copy for £27, go to guardianbookshop.com"
+                },
+                "isHosted": false,
+                "pillarId": "pillar/lifestyle",
+                "pillarName": "Lifestyle"
+              },
+              {
+                "id": "technology/2026/mar/13/apple-china-app-store",
+                "type": "article",
+                "sectionId": "technology",
+                "sectionName": "Technology",
+                "webPublicationDate": "2026-03-13T16:37:13Z",
+                "webTitle": "Apple cuts China App Store commission fees after government pressure",
+                "webUrl": "https://www.theguardian.com/technology/2026/mar/13/apple-china-app-store",
+                "apiUrl": "https://content.guardianapis.com/technology/2026/mar/13/apple-china-app-store",
+                "fields": {
+                  "bodyText": "Apple announced late on Thursday it would lower the commission fees collected in its App Store in mainland China. The move follows pressure from regulators in the tech company’s second-largest market, as well as global scrutiny of its payment requirements. Fees for in-app purchases and paid transactions will be lowered to 25% from 30% starting on Sunday, Apple said in a statement on its blog for developers. “Apple is making changes to the App Store in China following discussions with the Chinese regulator,” the company’s announcement reads. “As of March 15, 2026, changes will be made to the commission rates that apply to the China mainland storefront of the App Store on iOS and iPadOS.” The cut is estimated to save Chinese developers more than 6bn yuan ($873m) in operating costs annually, the Chinese state-owned Economic Daily said in a Thursday report that framed the measure as a win for Chinese digital consumers. “This adjustment will … improve consumption choices and information transparency,” the Economic Daily said. “The premium for digital goods and services on the iOS side will be gradually eliminated, and the prices of membership subscriptions, game recharges, live broadcast tips, mini programs and other scenarios are expected to decrease, which is expected to save consumers up to nearly 1bn yuan per year.” In-app purchase transactions for developers belonging to Apple’s small business and mini-apps partner programs will be cut to 12% from 15%. “Mini apps” refer to smaller applications that operate within a larger application such as Tencent’s WeChat. The move is a breakthrough for Chinese app developers and operators of “super apps”, including Tencent and TikTok owner ByteDance, whose platforms host many smaller apps created by third-party developers. The 30% Apple tax remains a main target of antitrust scrutiny by regulators worldwide. The EU introduced new legislation in 2024 that forced Apple to lower commission fees to between 10% and 17% for developers. In the US, Apple allows users to pay in-app fees via alternative payment methods. App Store commissions were the subject of a big lawsuit between Apple and Fortnite maker Epic Games, which resulted in the tech company being forced to allow linking to alternative payment sites that allow developers to circumvent the Apple tax. China’s antitrust watchdog had begun investigating the iPhone maker over its App Store prices last year but had not levied any formal charges, Bloomberg reported. “In China’s case, Apple has been talking with the IT ministry and other departments, and have been requested or pressured to reduce their fees,” said Rich Bishop, founder of AppInChina, a firm that advises foreign software developers on making their apps available in China. The move comes into effect on World Consumer Rights Day on Sunday, a time when Chinese state media usually highlights domestic and foreign companies accused of consumer rights violations. Apple was targeted by the campaign in 2013, when its after-sales service was criticized by state broadcaster CCTV, forcing the company to publicly apologize. In the future, the Chinese government may request Apple to collect App Store revenues in China instead of overseas, and further tighten regulatory oversight for foreign apps published in China, Bishop said. Apple has previously taken down apps such as virtual private networks (VPNs) from its China App Store at the request of Chinese internet regulators. All internet-connected devices carry an individual code which discloses their location, and VPNs allow users to hide their location by assigning their device a new code. Many Chinese users and foreign firms operating in China use them to bypass strict domestic internet censorship of foreign websites. China’s antitrust regulator was mulling an investigation into Apple’s policies and App Store fees, Bloomberg reported last year, while Chinese consumers filed an antitrust complaint over the firm’s app fee structure last October. Google cut Android developer fees worldwide last week. Apple’s fee reduction also applies to international developers whose apps are available on the China App Store. Bishop added: “Duolingo, the top-grossing education app in China, makes about $50m a year from the Chinese market, and this will be saving them a decent amount of money.”"
+                },
+                "isHosted": false,
+                "pillarId": "pillar/news",
+                "pillarName": "News"
+              },
+              {
+                "id": "food/2026/mar/05/apple-honey-poppy-seed-cake-recipe-rachel-roddy",
+                "type": "article",
+                "sectionId": "food",
+                "sectionName": "Food",
+                "webPublicationDate": "2026-03-05T06:00:54Z",
+                "webTitle": "Rachel Roddy’s recipe for apple, honey and poppy seed cake | A kitchen in Rome",
+                "webUrl": "https://www.theguardian.com/food/2026/mar/05/apple-honey-poppy-seed-cake-recipe-rachel-roddy",
+                "apiUrl": "https://content.guardianapis.com/food/2026/mar/05/apple-honey-poppy-seed-cake-recipe-rachel-roddy",
+                "fields": {
+                  "bodyText": "Honey is, among other things, a successful embalming agent. It is also a humectant, which isn’t an eager cyborg, but one of many short-chained organic compounds that are hygroscopic, meaning they attract and hold water, which in turn prevents hardening and encourages softness. Other hardworking humectants are glycerine, which is what keeps face creams creamy and hydrating, and sorbitol, which ensures toothpaste can be squeezed and smeared all over the sink and on the mirror. Honey, though, is the humectant that’s most suitable for this week’s recipe: a one-bowl, everyday cake inspired by my neighbour’s Polish honey cake, miodownik, combined with the tortino di mele e papavero (apple and poppy seed cake) enjoyed at a station bar in Bolzano. Not only does honey keep the cake moist, its sweetness comes largely from fructose, which is naturally sweeter than refined sugar, so the perception of sweetness is much greater even when less is added. I have suggested 160g, but adjust as you see fit. The small amounts of amino acids in honey also mean that the chemical Maillard reaction is more pronounced as the cake bakes, resulting in caramelisation and a crust the colour of chestnut, as well as a deep, nutty flavour. While I am sure all varieties of honey will work well, I can particularly recommend chestnut honey and Greek pine honey, both of which have complicated, almost malty notes that pair well with the apple and the pleasing, slightly bitter but also soil-like taste of poppy seeds. When it comes to choosing the type of apple (for this, and generally), I hear Jane Grigson’s advice in her Fruit Book: avoid anything too shiny – bright red, shiny apples (tough skin and woolly flesh) or bright green, shiny apples (tough skin, sour flesh) – and instead remember that there are more than 3,000 varieties, so try as many as possible. As with honey, I think most good-tasting eating varieties will work here, but special mention must go to those with sweet but creamy, drier flesh: russets, cox’s orange pippin or mela annurca, a little Italian variety with speckled red skin. I don’t peel the apples for this – I like the colour and texture that the skin gives to the final cake – but if the skin seems annoying, do cut it off, then slice the fruit thinly by hand or with a mandoline. The best way to test for doneness is to use a strand of raw spaghetti: stick it into the centre crack and it should come out relatively clean. Leave the cake to cool a little before lifting it out of the tin and leaving to cool a little more. Cut into thick slices and serve with a cup of tea and maybe a spoonful of thick cream sweetened (and turned every so slightly gold in colour) with a spoonful of honey. Apple, honey and poppyseed cake Make 1 22cm cake 100g room-temperature butter 8 tbsp (160g) honey 3 eggs 140ml whole milk 220g plain or wholemeal flour, or a mix of the two 5 tsp poppy seeds 2 tsp baking powder 1 pinch fine salt 1 large (or 2 small) red apples, unpeeled, quartered, cored and cut into thin slices 4 tbsp demerara sugar Using a whisk, beat the butter and honey to make a smooth cream, then beat in the eggs one by one. Add the milk, and whisk again until you have a smooth batter. Add the flour, poppy seeds, baking powder and a pinch of salt, and mix well. Add the apple slices, then scrape into a lined or buttered and floured 22cm baking tin and sprinkle the top with the demerara sugar. Bake in a 180C (160C fan)/350F/gas 4 oven for 40 minutes, or until a skewer or strand of spaghetti comes out clean. The presence of honey means the cake will brown deeply, maybe before the batter has had a chance to cook though, so keep an eye and, if need be, cover the cake lightly with a foil tent for the last 15 minutes."
+                },
+                "isHosted": false,
+                "pillarId": "pillar/lifestyle",
+                "pillarName": "Lifestyle"
+              },
+              {
+                "id": "technology/2026/mar/31/macbook-neo-review-budget-apple-laptop-iphone-chip",
+                "type": "article",
+                "sectionId": "technology",
+                "sectionName": "Technology",
+                "webPublicationDate": "2026-03-31T06:00:32Z",
+                "webTitle": "MacBook Neo review: the budget Apple laptop powered by an iPhone chip",
+                "webUrl": "https://www.theguardian.com/technology/2026/mar/31/macbook-neo-review-budget-apple-laptop-iphone-chip",
+                "apiUrl": "https://content.guardianapis.com/technology/2026/mar/31/macbook-neo-review-budget-apple-laptop-iphone-chip",
+                "fields": {
+                  "bodyText": "Apple’s brand new entry-level laptop is powered by the chip from an iPhone and offers more than just the essential MacBook experience for a great price, putting the PC industry on notice. The MacBook Neo is the first of its kind from Apple. A 13in laptop that runs on an A18 Pro chip and brings the starting price for a brand new MacBook down to £599 (€699/$599/A$899) – £500 or the equivalent less than the MacBook Air. The Neo is an entirely new model but shares almost all its design DNA with the MacBook Air and Pro, including its quality aluminium body, sleek lines and rounded corners. The Neo is 10g lighter, 1.4mm thicker and slightly smaller than the current Air by 8.6mm and 6.6mm on width and height respectively, which makes it feel quite dense for the size of machine. In practice it is not materially smaller for fitting in a bag or on a desk. The parts of the Neo that you interact with are all high quality, belying its lower cost. The 13in screen is smaller than the 13.6in fitted to the “13in” Air and lacks Apple’s True Tone technology but unlike many cheaper laptops, it is just as crisp with the same 500nit maximum brightness as the company’s other laptops. It doesn’t feel like a downgrade in use. The same can be said of the keyboard that is just as good as its more expensive siblings. The generous trackpad is mechanical rather than the top-class haptic versions as fitted to Apple’s other machines, but is the best of its type I have used. Far better than the poor diving-board style trackpads still fitted to many Windows and Chromebooks that simply can’t be clicked towards their tops. The base-model Neo does not have a Touch ID fingerprint scanner in the power button. It only comes with the larger storage model costing an extra £100 or the equivalent, which is a bit of a shame. The mics and 1080p webcam are pretty good but the latter lacks Apple’s auto-panning and scanning tech. The speakers are also decent: loud enough to fill a small room with music or a movie and without being too tinny. The Neo also has a headphone socket, which is an increasingly rare but welcome sight. Specifications Screen: 13in LCD (2408x1506; 219 ppi) Processor: Apple 18 Pro (5-core GPU) RAM: 8GB Storage: 256GB or 512GB Operating system: macOS 26 Tahoe Camera: 1080p FaceTime HD Connectivity: wifi 6E, Bluetooth 6, 2x USB-C (USB3 and USB2), headphones Dimensions: 206.4 x 297.5 x 12.7mm Weight: 1.23kg An iPhone chip? No sweat Unlike the rest of Apple’s Macs, which have beefier M-series chips, the Neo has an A18 Pro chip from the iPhone 16 Pro. Don’t let the name fool you, the chip is highly performant, particularly in everyday tasks in which it absolutely flies. As a result the Neo can handle most tasks with aplomb despite only having 8GB of memory – half that of other Macs. It sailed through complex edits to multiple large file photos in Affinity and Pixelmator Pro without breaking a sweat and is easily capable of light video editing. It will only start to slow down in the types of tasks that require large amounts of memory or multicore processing performance, which those buying a Neo are highly unlikely to routinely need. The laptop’s battery life is excellent for a thin and light machine, managing about 13 hours between charges for general browsing, note taking, image editing, chat and emails, which equates to about a day and a half of work. You can be confident of leaving the house without the charger and still getting all your work done. The port selection of the Neo is a bit unusual. It has two USB-C ports but only one is USB3, leaving the second one suitable only for connecting slower USB2 accessories such as a keyboard or mouse, or using for power. Only the USB3 port supports connecting to a monitor and neither support Thunderbolt, so won’t work with certain docks, displays or the fastest storage in the same way every other Mac can. The Neo can only drive screens up to 4K at 60Hz, which means no high frame rate displays. It will work with an Apple Studio Display, but only at 4K, not the monitor’s native 5K resolution. MacOS 26 Tahoe The Neo runs macOS 26 Tahoe, just like every other recent Mac, and supports all the traditional software, including Microsoft Office, Chrome, WhatsApp, Adobe or web apps. But Macs come with a lot of bundled software for free, including a full, good office suite with Pages, Numbers, Keynote, Notes, Voice Memos and Freeform, and the excellent Garage Band and iMovie for content creation. There are often better options available in the App Store or third-party sites, but for many, Apple’s apps are more than good enough for most tasks. Sustainability The MacBook Neo is made with 60% recycled materials. Apple breaks down the computer’s environmental impact in its report. The battery should last in excess of 1,000 full-charge cycles with at least 80% of its original capacity, and can be replaced from £149. The repair specialists iFixit gave the machine six out of 10 for repairability. Apple offers trade-in and free recycling schemes, including for non-Apple products. Price The Apple MacBook Neo costs £599 (€699/$599/A$899) with 256GB of storage or £699 (€799/$699/A$1,099) with 512GB and Touch ID. For comparison, the 13in MacBook Air M5 costs from £1,099, the iPad Air M4 costs £599, the Microsoft Surface Laptop 13in costs £899 and the Asus Vivobook 14’s RRP is £799. Verdict The MacBook Neo is a stunning entry into the sub-£600 laptop category that proves cheaper machines don’t have to be rubbish. Apple has cut the right corners to hit a price that is just over half a MacBook Air, ensuring all the parts you directly interact with remain very high quality. The Neo just doesn’t feel like a cheaper laptop. The A18 Pro iPhone chip at its heart flies through everyday tasks. The bright and crisp screen is a joy to look at and the keyboard and trackpad are best in class. Despite having a smaller screen than the MacBook Air, the Neo isn’t materially more compact when it comes to fitting it in a bag, however. There are lots of cuts compared with an M5 MacBook Air that may be deal breakers for some: no wifi 7, no Thunderbolt, no 5K display support, only 8GB memory, a mechanical rather than haptic touchpad, no backlit keys, no True Tone display and no Centre Stage webcam. If you need any of those features or can afford to pay more, then the MacBook Air is a better laptop all round. But for those who want a cheaper machine, particularly at student prices, which are £100 or the equivalent less than the RRP, Apple has set a new benchmark with the Neo. PC makers better take notice. Pros: snappy performance, long battery life, good and bright 13in screen, great keyboard, best-in-class mechanical trackpad, good mics and speakers, decent webcam, Touch ID, good value. Cons: only two USB-C ports (USB3 and USB2), only 8GB of memory, no wifi 7, no Thunderbolt, no backlit keyboard, no True Tone or Centre Stage tech, no Touch ID on cheapest model, no MagSafe or fast charging, no M5 chip."
+                },
+                "isHosted": false,
+                "pillarId": "pillar/news",
+                "pillarName": "News"
+              },
+              {
+                "id": "technology/2026/mar/11/apple-ipad-air-m4-review-still-the-premium-tablet-to-beat",
+                "type": "article",
+                "sectionId": "technology",
+                "sectionName": "Technology",
+                "webPublicationDate": "2026-03-11T07:00:12Z",
+                "webTitle": "Apple iPad Air M4 review: still the premium tablet to beat",
+                "webUrl": "https://www.theguardian.com/technology/2026/mar/11/apple-ipad-air-m4-review-still-the-premium-tablet-to-beat",
+                "apiUrl": "https://content.guardianapis.com/technology/2026/mar/11/apple-ipad-air-m4-review-still-the-premium-tablet-to-beat",
+                "fields": {
+                  "bodyText": "The latest iPad Air is faster in almost all facets, packing not just a processor upgrade but improvements to most of the internal bits that make the tablet work, providing laptop-grade power in a skinny, adaptable touchscreen device. The new iPad Air M4 costs from the same £599 (€649/$599/A$999) as the outgoing M3 model from last year and again comes in two sizes. One with an 11in screen, which is the best size for most people and a more expensive 13in screen version, which is ideal if you want a second TV or a laptop replacement. As with the last few generations of iPad Air, nothing has changed on the outside. It is still only 6.1mm thick, weighs under half a kilogram and feels like a quality piece of hardware. The Touch ID power button works great, the screen is crisp, bright and colour accurate, its stereo speakers are loud and clear, and the Centre Stage webcam is excellent. As a media-watching device it is great, but the iPad Air can be far more. Fitted with the right accessory, such as a keyboard case, it can become a laptop replacement. The Apple Pencil stylus turns it into a fantastic note-taking device or digital sketch pad. And it has battery life that will manage at least 9 hours of heavy use or far more just browsing or lightly editing images. Specifications Screen: 11in or 13in Liquid Retina display (264ppi) Processor: Apple M4 (8-core CPU/9-core GPU) RAM: 12GB Storage: 128, 256, 512GB or 1TB Operating system: iPadOS 26.3 Camera: 12MP rear, 12MP centre stage Connectivity: Wifi 7, 5G (eSim-only), Bluetooth 6, USB-C (USB3), Touch ID, Smart Connecter Dimensions: 247.6 x 178.5 x 6.1mm or 280.6 x 214.9 x 6.1mm Weight: 464g or 616g M4 power and rapid wifi The M4 chip, last seen in the iPad Pro, MacBook Air and even the MacBook Pro, and the upgraded 12GB of memory gives the iPad Air far more power than most will ever need. It is up to 21% faster on paper than the M3 model it replaces and up to 60% faster than the M1. Very few laptops have this kind of performance at this price, let alone tablets. The Air now also has Apple’s N1 wifi, Bluetooth and Thread chip, which proved to be very capable, consistently ranking as one of the fastest wifi7-equipped devices I have tested. Similarly, the Apple C1X 5G chip matched some of the very fastest smartphones for mobile data. Both chips will make an immediate impact if you rely on fast data speeds in and out of home, but they also future proof the Air for years to come, particularly as wifi7 becomes the gold standard. Altogether it means you can easily perform real work on the Air, whether it’s editing video in Final Cut Pro or image manipulation in Pixelmator Pro, or just word processing in Microsoft Word, the tablet sails through tasks without breaking a sweat. But that much power also means it will still be fast five or more years down the line, too. The Air runs iPadOS 26.3 out of the box, which recently added a lot of vastly improved multitasking tools to Apple’s tablet operating system. It is more like a Mac than ever, with additions such as the menu bar at the top of the screen, free window sizing and placement, the traditional three-dot window buttons and even the proper Preview app for viewing and editing files, PDFs, images and more. But it still has the option to forgo the desktop-like interface for the traditional iPad full-screen apps, games and media streaming experience. Sustainability The battery should last in excess of 1,000 full charge cycles with at least 80% of its original capacity, and can be replaced from £125. The tablet is generally repairable, with a damaged out-of-warranty repair costing from £429. The tablet contains at least 30% recycled content, including aluminium, cobalt, copper, glass, gold, lithium, plastic, rare-earth elements, steel and tin. Apple breaks down the tablet’s environmental impact in its report and offers trade-in and free recycling schemes, including for non-Apple products. Price The 11in iPad Air M4 costs from £599 (€649/$599/A$999) and the 13in iPad Air M4 costs from £799 (€849/$799/A$1,349). For comparison, the iPad A16 costs from £329, the iPad Pro M5 costs from £999 and the Samsung Galaxy Tab S10 FE costs from £399. The MacBook Neo starts at £599 and the MacBook Air M5 starts at £1,099. Verdict The iPad Air M4 is the best premium tablet for most Apple buyers. It offers most of the best of Apple’s tech for a more reasonable price, and trounces the competition at the same cost. It may not have the best screen on the market and lacks the convenience of Face ID, both of which Apple keeps for the iPad Pro. But with long battery life, performance for days, a huge library of both tablet apps, such as ever media streamer under the sun, and now desktop-class apps such as Apple’s Creative Suite, Photoshop, Procreate, DaVinci Resolve and Scrivener, the iPad Air can do so much. It won’t feel like an upgrade to anyone with an iPad Air or similar from the last few generations. But those hoping to trade in a basic iPad or 2020 iPad Air or older will absolutely see the difference, with the M4 chip ready to go the distance for another six-plus years. Pros: laptop-level M4 and wireless performance, choice of sizes, great battery life, quality screen and speakers, USB-C (USB3), long software support life, large range of tablet apps, growing collection of good desktop-class apps, plenty of accessories for most uses, Centre Stage camera Cons: expensive, no multiuser support, no kickstand without case, no Face ID, 60Hz screen, only 128GB starting storage, no big upgrade on M2/M3 predecessors."
+                },
+                "isHosted": false,
+                "pillarId": "pillar/news",
+                "pillarName": "News"
+              },
+              {
+                "id": "technology/2026/jan/29/apple-ai-plans-siri-reboot",
+                "type": "article",
+                "sectionId": "technology",
+                "sectionName": "Technology",
+                "webPublicationDate": "2026-01-29T22:25:30Z",
+                "webTitle": "Apple reports massive spike in iPhone revenue, particularly in China",
+                "webUrl": "https://www.theguardian.com/technology/2026/jan/29/apple-ai-plans-siri-reboot",
+                "apiUrl": "https://content.guardianapis.com/technology/2026/jan/29/apple-ai-plans-siri-reboot",
+                "fields": {
+                  "bodyText": "Apple released its first quarter earnings on Thursday, exceeding Wall Street’s expectations and seeing its revenue skyrocket 16% from the same time last year. “Apple is proud to report a remarkable, record-breaking quarter, with revenue of $143.8bn,” Tim Cook, the company’s CEO, said in a statement. “iPhone had its best-ever quarter driven by unprecedented demand, with all-time records across every geographic segment.” The tech titan’s reported revenue went far beyond analyst’s forecasts of $138.4bn. Apple’s earnings per share, $2.84, also surpassed Wall Street’s estimate of $2.68 per share. Last year, during the company’s first quarter, it reported $124.3bn, typically Apple’s biggest of the year after holiday shopping. iPhone revenue shot up 23% since the same period last year. The company pointed to strong sales of its new line-up of the iPhone 17, which debuted in September. The slate of new smartphones, in particular the iPhone 17 and 17 Pro, has reinvigorated demand for Apple’s products, especially in China, where sales had been lagging behind projections. This quarter the company drove strong results in China with sales in the region climbing 38%. In a call with investors on Thursday, Cook said the growth was largely driven by iPhone sales. “It was the best iPhone quarter in history in greater China,” Cook said. “Our install base reached an all-time high in both greater China and mainland China.” Worldwide, Cook said the number of Apple’s active devices, including iPhones, Macs and other products, has reached 2.5bn, up from 2.35bn that the company announced a year ago. It is widely rumored that Apple is planning to debut its first folding phone sometime in 2026, which would bring it in line with Samsung, Motorola, Google and other companies, which have offered folding smartphones for years. Over the past year, all eyes have been on Apple’s roadmap for integrating artificial intelligence into its products. The company has shown steady financial growth as iPhone sales have remained strong, but investors have worried that Apple is getting left behind its competitors when it comes to AI. The company announced earlier this month that the rebooted version of its voice assistant, Siri, will be powered by Google’s Gemini AI models. On the earnings call, Cook said a “more personalized Siri” is coming this year and the company believes the refreshed assistant “can unlock a lot of experiences and innovate in a clear way with the collaboration”. Thomas Monteiro, a senior analyst at Investing.com, said Wall Street may be overly fixated on splashy AI instead of the strong demand for iPhones, adding that Apple’s strong quarterly revenue will likely help it weather growing AI spending. “Despite market participants continually punishing Apple stock for the company’s perceived lagging suite of AI offerings, the unseen iPhone 17 demand shows that the actual consumer market is prioritizing execution, pricing discipline, and ecosystem reliability over headline, often incremental AI features,” he said. Last quarter, Apple reported a new record for fourth quarter revenue, coming in at $102.5bn. The news came just days after the company hit a $4tn market value for the first time. Apple’s stock kept rising to hit an all-time high in early December. It’s fallen 10% since then, but is still up year-over-year. In extended trading on Thursday, Apple’s stock rose more than 1%."
+                },
+                "isHosted": false,
+                "pillarId": "pillar/news",
+                "pillarName": "News"
+              }
+            ]
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Alpha": [
+      {
+        "json": {
+          "Symbol": "AAPL",
+          "AssetType": "Common Stock",
+          "Name": "Apple Inc",
+          "Description": "Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services. Apple is the world's largest technology company by revenue (totalling $274.5 billion in 2020) and, since January 2021, the world's most valuable company. As of 2021, Apple is the world's fourth-largest PC vendor by unit sales, and fourth-largest smartphone manufacturer. It is one of the Big Five American information technology companies, along with Amazon, Google, Microsoft, and Facebook.",
+          "CIK": "320193",
+          "Exchange": "NASDAQ",
+          "Currency": "USD",
+          "Country": "USA",
+          "Sector": "TECHNOLOGY",
+          "Industry": "CONSUMER ELECTRONICS",
+          "Address": "ONE APPLE PARK WAY, CUPERTINO, CA, UNITED STATES, 95014",
+          "OfficialSite": "https://www.apple.com",
+          "FiscalYearEnd": "September",
+          "LatestQuarter": "2025-12-31",
+          "MarketCapitalization": "3828515865000",
+          "EBITDA": "152901992000",
+          "PERatio": "33.01",
+          "PEGRatio": "2.332",
+          "BookValue": "6.0",
+          "DividendPerShare": "1.03",
+          "DividendYield": "0.004",
+          "EPS": "7.89",
+          "RevenuePerShareTTM": "29.3",
+          "ProfitMargin": "0.27",
+          "OperatingMarginTTM": "0.354",
+          "ReturnOnAssetsTTM": "0.244",
+          "ReturnOnEquityTTM": "1.52",
+          "RevenueTTM": "435617006000",
+          "GrossProfitTTM": "206157005000",
+          "DilutedEPSTTM": "7.89",
+          "QuarterlyEarningsGrowthYOY": "0.183",
+          "QuarterlyRevenueGrowthYOY": "0.157",
+          "AnalystTargetPrice": "296.12",
+          "AnalystRatingStrongBuy": "6",
+          "AnalystRatingBuy": "25",
+          "AnalystRatingHold": "15",
+          "AnalystRatingSell": "1",
+          "AnalystRatingStrongSell": "1",
+          "TrailingPE": "33.01",
+          "ForwardPE": "30.49",
+          "PriceToSalesRatioTTM": "8.79",
+          "PriceToBookRatio": "43.36",
+          "EVToRevenue": "8.83",
+          "EVToEBITDA": "25.17",
+          "Beta": "1.109",
+          "52WeekHigh": "288.35",
+          "52WeekLow": "188.99",
+          "50DayMovingAverage": "260.88",
+          "200DayMovingAverage": "250.63",
+          "SharesOutstanding": "14681140000",
+          "SharesFloat": "14656035000",
+          "PercentInsiders": "1.641",
+          "PercentInstitutions": "65.286",
+          "DividendDate": "2026-02-12",
+          "ExDividendDate": "2026-02-09"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Final Bundle": [
+      {
+        "json": {
+          "company": "Apple",
+          "query": "Apple company overview financials news 2024",
+          "serper_results": [
+            {
+              "title": "Apple reports fourth quarter results",
+              "snippet": "Apple today announced financial results for its fiscal 2024 fourth quarter ended September 28, 2024. The Company posted quarterly revenue of $94.9 billion, up ...",
+              "link": "https://www.apple.com/newsroom/2024/10/apple-reports-fourth-quarter-results/"
+            },
+            {
+              "title": "Investor Relations - Apple",
+              "snippet": "Apple's conference call to discuss second fiscal quarter results and business updates is scheduled for Thursday, April 30, 2026 at 2:00 p.m. PT / 5:00 p.m. ET.",
+              "link": "https://investor.apple.com/investor-relations/default.aspx"
+            },
+            {
+              "title": "Apple reports fourth quarter results",
+              "snippet": "“Our September quarter results capped off a record fiscal year, with revenue reaching $416 billion, as well as double-digit EPS growth,” said ...",
+              "link": "https://www.apple.com/newsroom/2025/10/apple-reports-fourth-quarter-results/"
+            },
+            {
+              "title": "[PDF] Apple Inc. on Form 10-K for the fiscal year ended September 28, 2024",
+              "snippet": "This includes press releases and other information about financial performance, information on environmental, social and governance matters, and ...",
+              "link": "https://s2.q4cdn.com/470004039/files/doc_earnings/2024/q4/filing/10-Q4-2024-As-Filed.pdf"
+            },
+            {
+              "title": "Apple Full Year 2024 Earnings: In Line With Expectations",
+              "snippet": "Key Financial Results · Revenue: US$391.0b (up 2.0% from FY 2023). · Net income: US$93.7b (down 3.4% from FY 2023). · Profit margin: 24% (down from ...",
+              "link": "https://finance.yahoo.com/news/apple-full-2024-earnings-line-122506497.html"
+            }
+          ],
+          "guardian_results": [
+            {
+              "title": "Apple at 50 quiz: top sellers, turkeys and turtlenecks",
+              "body": "In the 50 years since it was founded, Apple has long been seen as one of the most significant technology companies globally. The design and manufacturing decisions taken in Cupertino, California have affected product design across the world, helping usher in an era of ubiquitous touchscreen computing while insisting on exacting user experience design principles. How much do you know about the history of one of the most powerful computing companies on the planet? Test yourself with these 12 quest",
+              "link": "https://www.theguardian.com/technology/2026/apr/01/apple-at-50-quiz"
+            },
+            {
+              "title": "iPhone 17e review: Apple upgrades its cheapest new smartphone",
+              "body": "The cheapest new iPhone has been upgraded for this year with a faster chip, double the storage, automatic portraits and MagSafe, providing even more of the core Apple smartphone experience for less. The iPhone 17e is an upgraded version of the mid-range “e” line launched last year with the first iPhone 16e and is the latest member of the iPhone 17 family. It starts at £599 (€699/$599/A$999), undercutting the iPhone 17 and iPhone 16 by £200 and £100 respectively to be the cheapest new iPhone sold",
+              "link": "https://www.theguardian.com/technology/2026/mar/23/iphone-17e-review-apple-cheapest-new-smartphone-chip-magsafe-storage"
+            },
+            {
+              "title": "Meet the colour of the moment: apple green",
+              "body": "On the fashion colour wheel, green has long carried a reputation for being “tricky” – a shade that clashes with others and flatters only certain skin tones. Yet this year, a particular apple green has been steadily gaining popularity. It has appeared on catwalks and even on the red carpet, defying the old adage that red and green should never be seen. Arriving at the Berlin film festival, Pamela Anderson wore an apple-green wrap by Carolina Herrera over a dress in tonal pinks and greens. Amal Cl",
+              "link": "https://www.theguardian.com/fashion/2026/feb/20/colour-of-the-moment-apple-green-golden-globes-baftas"
+            },
+            {
+              "title": "Apple subsidiary fined by UK government over Moscow sanctions breach",
+              "body": "The UK government has fined a subsidiary of Apple £390,000 for breaching sanctions against Moscow over payments it made to a Russian streaming platform. Apple Distribution International (ADI), based in the Republic of Ireland, instructed an unnamed UK-based bank to make two payments to a company owned by a sanctioned Russian entity. The payments, worth more than £635,000 in total, were made to the streaming service Okko from an ADI bank account based in Britain. ADI is responsible for selling Ap",
+              "link": "https://www.theguardian.com/technology/2026/mar/30/apple-subsidiary-fine-uk-government-sanctions-russia"
+            },
+            {
+              "title": "Nicola Lamb’s recipes for toffee apple pie and apple crumb loaf",
+              "body": "It’s easy to forget just how extraordinary apples can be. Often relegated to less exciting regions of the fruit bowl, they actually come in a dizzying array of varieties – sharp, sweet, floral, crisp – and each with their own quirks. And now is the time to celebrate apples, so this week I’m giving them the attention they deserve in a no-bake toffee apple pie (banoffee’s autumn cousin) and a soft, cinnamon-spiced crumb cake. Toffee apple pie (pictured top) You will need a 23cm loose-bottomed tart",
+              "link": "https://www.theguardian.com/food/2025/oct/15/toffee-apple-pie-apple-crumb-loaf-recipes-nicola-lamb"
+            }
+          ],
+          "alpha_data": {
+            "name": "Apple Inc",
+            "description": "Apple Inc. is an American multinational technology company that specializes in consumer electronics, computer software, and online services. Apple is the world's largest technology company by revenue (totalling $274.5 billion in 2020) and, since January 2021, the world's most valuable company. As of 2021, Apple is the world's fourth-largest PC vendor by unit sales, and fourth-largest smartphone manufacturer. It is one of the Big Five American information technology companies, along with Amazon, Google, Microsoft, and Facebook.",
+            "sector": "TECHNOLOGY",
+            "industry": "CONSUMER ELECTRONICS",
+            "market_cap": "3828515865000",
+            "pe_ratio": "33.01",
+            "revenue": "435617006000"
+          },
+          "timestamp": "2026-04-12T10:24:03.558Z"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "localhost:5678",
+            "user-agent": "curl/8.7.1",
+            "accept": "*/*",
+            "content-type": "application/json",
+            "content-length": "20"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "company": "Apple"
+          },
+          "webhookUrl": "http://localhost:5678/webhook-test/research",
+          "executionMode": "test"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Normalize Input": [
+      {
+        "json": {
+          "company": "Apple",
+          "query": "Apple company overview financials news 2024"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Serper HTTP Request": [
+      {
+        "json": {
+          "searchParameters": {
+            "q": "Apple company overview financials news 2024",
+            "type": "search",
+            "engine": "google"
+          },
+          "organic": [
+            {
+              "title": "Apple reports fourth quarter results",
+              "link": "https://www.apple.com/newsroom/2024/10/apple-reports-fourth-quarter-results/",
+              "snippet": "Apple today announced financial results for its fiscal 2024 fourth quarter ended September 28, 2024. The Company posted quarterly revenue of $94.9 billion, up ...",
+              "date": "Oct 31, 2024",
+              "position": 1
+            },
+            {
+              "title": "Investor Relations - Apple",
+              "link": "https://investor.apple.com/investor-relations/default.aspx",
+              "snippet": "Apple's conference call to discuss second fiscal quarter results and business updates is scheduled for Thursday, April 30, 2026 at 2:00 p.m. PT / 5:00 p.m. ET.",
+              "position": 2
+            },
+            {
+              "title": "[PDF] Apple Inc.",
+              "link": "https://www.apple.com/newsroom/pdfs/fy2024-q4/FY24_Q4_Consolidated_Financial_Statements.pdf",
+              "snippet": "As a result, during the fourth quarter of 2024 the Company recorded a one-time income tax charge of $10.2 billion, net, which represents $15.8 ...",
+              "date": "Sep 28, 2024",
+              "attributes": {
+                "Missing": "news | Show results with:news"
+              },
+              "position": 3
+            },
+            {
+              "title": "Apple Full Year 2024 Earnings: In Line With Expectations",
+              "link": "https://finance.yahoo.com/news/apple-full-2024-earnings-line-122506497.html",
+              "snippet": "Key Financial Results · Revenue: US$391.0b (up 2.0% from FY 2023). · Net income: US$93.7b (down 3.4% from FY 2023). · Profit margin: 24% (down from ...",
+              "date": "Nov 4, 2024",
+              "position": 4
+            },
+            {
+              "title": "[PDF] Apple Inc. on Form 10-K for the fiscal year ended September 28, 2024",
+              "link": "https://s2.q4cdn.com/470004039/files/doc_earnings/2024/q4/filing/10-Q4-2024-As-Filed.pdf",
+              "snippet": "This includes press releases and other information about financial performance, information on environmental, social and governance matters, and ...",
+              "date": "Nov 1, 2024",
+              "position": 5
+            },
+            {
+              "title": "Apple 2024 Annual Report Financials - YouTube",
+              "link": "https://www.youtube.com/watch?v=TjoEn4KuKps",
+              "snippet": "This Apple Inc. Form 10-K filing details the company's financial performance for fiscal year 2024, including its business operations, ...",
+              "date": "Dec 20, 2024",
+              "attributes": {
+                "Missing": "news | Show results with:news"
+              },
+              "position": 6
+            },
+            {
+              "title": "Apple reports fourth quarter results - The Globe and Mail",
+              "link": "https://www.theglobeandmail.com/investing/markets/stocks/AAPL/pressreleases/35807908/apple-reports-fourth-quarter-results/",
+              "snippet": "As a result, during the fourth quarter of 2024 the Company recorded a one-time income tax charge of $10.2 billion, net, which represented $15.8 ...",
+              "date": "Oct 30, 2025",
+              "position": 7
+            },
+            {
+              "title": "[October.2024] Four Focal Points of Apple's Earnings Report",
+              "link": "https://www.moomoo.com/us/learn/detail-fy24-q1-four-focal-points-of-apple-s-earnings-report-113843-230959005",
+              "snippet": "In Q2 of fiscal 2024, services revenue hit about $24.2 billion, up 14.1% year-over-year, and maintained double-digit growth for four consecutive quarters.",
+              "position": 8
+            },
+            {
+              "title": "Apple reports first quarter results",
+              "link": "https://www.apple.com/newsroom/2024/02/apple-reports-first-quarter-results/",
+              "snippet": "The Company posted quarterly revenue of $119.6 billion, up 2 percent year over year, and quarterly earnings per diluted share of $2.18, up 16 percent year over ...",
+              "date": "Feb 1, 2024",
+              "position": 9
+            },
+            {
+              "title": "Apple reports fourth quarter results",
+              "link": "https://www.apple.com/newsroom/2025/10/apple-reports-fourth-quarter-results/",
+              "snippet": "“Our September quarter results capped off a record fiscal year, with revenue reaching $416 billion, as well as double-digit EPS growth,” said ...",
+              "date": "Oct 30, 2025",
+              "position": 10
+            }
+          ],
+          "peopleAlsoAsk": [
+            {
+              "question": "What is Apple's financial summary for 2024?",
+              "snippet": "CUPERTINO, CALIFORNIA Apple today announced financial results for its fiscal 2024 fourth quarter ended September 28, 2024. The Company posted quarterly revenue of $94.9 billion, up 6 percent year over year, and quarterly diluted earnings per share of $0.97.",
+              "title": "Apple reports fourth quarter results",
+              "link": "https://www.apple.com/my/newsroom/2024/10/apple-reports-fourth-quarter-results/"
+            },
+            {
+              "question": "Did Apple make a profit in 2024?",
+              "snippet": "Apple gross profit for the twelve months ending December 31, 2025 was $206.157B, a 11.98% increase year-over-year. Apple annual gross profit for 2025 was $195.201B, a 8.04% increase from 2024. Apple annual gross profit for 2024 was $180.683B, a 6.82% increase from 2023.",
+              "title": "Apple Gross Profit 2012-2025 | AAPL - Macrotrends",
+              "link": "https://www.macrotrends.net/stocks/charts/AAPL/apple/gross-profit"
+            }
+          ],
+          "relatedSearches": [
+            {
+              "query": "Apple company overview financials news 2024 pdf"
+            },
+            {
+              "query": "Apple company overview financials news 2024 2023"
+            },
+            {
+              "query": "Apple Financial Statements 2024 PDF"
+            },
+            {
+              "query": "Apple financial Report 2024"
+            },
+            {
+              "query": "Apple revenue 2025"
+            },
+            {
+              "query": "Apple earnings news"
+            },
+            {
+              "query": "Apple revenue and profit"
+            },
+            {
+              "query": "Apple Q4 earnings date"
+            }
+          ],
+          "credits": 1
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Clean Guardian Output": [
+      {
+        "json": {
+          "company": "Apple",
+          "query": "Apple company overview financials news 2024",
+          "serper_results": [
+            {
+              "title": "Apple reports fourth quarter results",
+              "snippet": "Apple today announced financial results for its fiscal 2024 fourth quarter ended September 28, 2024. The Company posted quarterly revenue of $94.9 billion, up ...",
+              "link": "https://www.apple.com/newsroom/2024/10/apple-reports-fourth-quarter-results/"
+            },
+            {
+              "title": "Investor Relations - Apple",
+              "snippet": "Apple's conference call to discuss second fiscal quarter results and business updates is scheduled for Thursday, April 30, 2026 at 2:00 p.m. PT / 5:00 p.m. ET.",
+              "link": "https://investor.apple.com/investor-relations/default.aspx"
+            },
+            {
+              "title": "[PDF] Apple Inc.",
+              "snippet": "As a result, during the fourth quarter of 2024 the Company recorded a one-time income tax charge of $10.2 billion, net, which represents $15.8 ...",
+              "link": "https://www.apple.com/newsroom/pdfs/fy2024-q4/FY24_Q4_Consolidated_Financial_Statements.pdf"
+            },
+            {
+              "title": "Apple Full Year 2024 Earnings: In Line With Expectations",
+              "snippet": "Key Financial Results · Revenue: US$391.0b (up 2.0% from FY 2023). · Net income: US$93.7b (down 3.4% from FY 2023). · Profit margin: 24% (down from ...",
+              "link": "https://finance.yahoo.com/news/apple-full-2024-earnings-line-122506497.html"
+            },
+            {
+              "title": "[PDF] Apple Inc. on Form 10-K for the fiscal year ended September 28, 2024",
+              "snippet": "This includes press releases and other information about financial performance, information on environmental, social and governance matters, and ...",
+              "link": "https://s2.q4cdn.com/470004039/files/doc_earnings/2024/q4/filing/10-Q4-2024-As-Filed.pdf"
+            }
+          ],
+          "guardian_results": [
+            {
+              "title": "Apple at 50 quiz: top sellers, turkeys and turtlenecks",
+              "body": "In the 50 years since it was founded, Apple has long been seen as one of the most significant technology companies globally. The design and manufacturing decisions taken in Cupertino, California have affected product design across the world, helping usher in an era of ubiquitous touchscreen computing while insisting on exacting user experience design principles. How much do you know about the history of one of the most powerful computing companies on the planet? Test yourself with these 12 quest",
+              "link": "https://www.theguardian.com/technology/2026/apr/01/apple-at-50-quiz"
+            },
+            {
+              "title": "iPhone 17e review: Apple upgrades its cheapest new smartphone",
+              "body": "The cheapest new iPhone has been upgraded for this year with a faster chip, double the storage, automatic portraits and MagSafe, providing even more of the core Apple smartphone experience for less. The iPhone 17e is an upgraded version of the mid-range “e” line launched last year with the first iPhone 16e and is the latest member of the iPhone 17 family. It starts at £599 (€699/$599/A$999), undercutting the iPhone 17 and iPhone 16 by £200 and £100 respectively to be the cheapest new iPhone sold",
+              "link": "https://www.theguardian.com/technology/2026/mar/23/iphone-17e-review-apple-cheapest-new-smartphone-chip-magsafe-storage"
+            },
+            {
+              "title": "Meet the colour of the moment: apple green",
+              "body": "On the fashion colour wheel, green has long carried a reputation for being “tricky” – a shade that clashes with others and flatters only certain skin tones. Yet this year, a particular apple green has been steadily gaining popularity. It has appeared on catwalks and even on the red carpet, defying the old adage that red and green should never be seen. Arriving at the Berlin film festival, Pamela Anderson wore an apple-green wrap by Carolina Herrera over a dress in tonal pinks and greens. Amal Cl",
+              "link": "https://www.theguardian.com/fashion/2026/feb/20/colour-of-the-moment-apple-green-golden-globes-baftas"
+            },
+            {
+              "title": "Apple subsidiary fined by UK government over Moscow sanctions breach",
+              "body": "The UK government has fined a subsidiary of Apple £390,000 for breaching sanctions against Moscow over payments it made to a Russian streaming platform. Apple Distribution International (ADI), based in the Republic of Ireland, instructed an unnamed UK-based bank to make two payments to a company owned by a sanctioned Russian entity. The payments, worth more than £635,000 in total, were made to the streaming service Okko from an ADI bank account based in Britain. ADI is responsible for selling Ap",
+              "link": "https://www.theguardian.com/technology/2026/mar/30/apple-subsidiary-fine-uk-government-sanctions-russia"
+            },
+            {
+              "title": "Nicola Lamb’s recipes for toffee apple pie and apple crumb loaf",
+              "body": "It’s easy to forget just how extraordinary apples can be. Often relegated to less exciting regions of the fruit bowl, they actually come in a dizzying array of varieties – sharp, sweet, floral, crisp – and each with their own quirks. And now is the time to celebrate apples, so this week I’m giving them the attention they deserve in a no-bake toffee apple pie (banoffee’s autumn cousin) and a soft, cinnamon-spiced crumb cake. Toffee apple pie (pictured top) You will need a 23cm loose-bottomed tart",
+              "link": "https://www.theguardian.com/food/2025/oct/15/toffee-apple-pie-apple-crumb-loaf-recipes-nicola-lamb"
+            }
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Serper Clean": [
+      {
+        "json": {
+          "company": "Apple",
+          "query": "Apple company overview financials news 2024",
+          "serper_results": [
+            {
+              "title": "Apple reports fourth quarter results",
+              "snippet": "Apple today announced financial results for its fiscal 2024 fourth quarter ended September 28, 2024. The Company posted quarterly revenue of $94.9 billion, up ...",
+              "link": "https://www.apple.com/newsroom/2024/10/apple-reports-fourth-quarter-results/"
+            },
+            {
+              "title": "Investor Relations - Apple",
+              "snippet": "Apple's conference call to discuss second fiscal quarter results and business updates is scheduled for Thursday, April 30, 2026 at 2:00 p.m. PT / 5:00 p.m. ET.",
+              "link": "https://investor.apple.com/investor-relations/default.aspx"
+            },
+            {
+              "title": "[PDF] Apple Inc.",
+              "snippet": "As a result, during the fourth quarter of 2024 the Company recorded a one-time income tax charge of $10.2 billion, net, which represents $15.8 ...",
+              "link": "https://www.apple.com/newsroom/pdfs/fy2024-q4/FY24_Q4_Consolidated_Financial_Statements.pdf"
+            },
+            {
+              "title": "Apple Full Year 2024 Earnings: In Line With Expectations",
+              "snippet": "Key Financial Results · Revenue: US$391.0b (up 2.0% from FY 2023). · Net income: US$93.7b (down 3.4% from FY 2023). · Profit margin: 24% (down from ...",
+              "link": "https://finance.yahoo.com/news/apple-full-2024-earnings-line-122506497.html"
+            },
+            {
+              "title": "[PDF] Apple Inc. on Form 10-K for the fiscal year ended September 28, 2024",
+              "snippet": "This includes press releases and other information about financial performance, information on environmental, social and governance matters, and ...",
+              "link": "https://s2.q4cdn.com/470004039/files/doc_earnings/2024/q4/filing/10-Q4-2024-As-Filed.pdf"
+            }
+          ]
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Code in JavaScript": [
+      {
+        "json": {
+          "company": "Apple",
+          "query": "Apple company overview financials news 2024",
+          "serper_results": [
+            {
+              "title": "Apple reports fourth quarter results",
+              "snippet": "Apple today announced financial results for its fiscal 2024 fourth quarter ended September 28, 2024. The Company posted quarterly revenue of $94.9 billion, up ...",
+              "link": "https://www.apple.com/newsroom/2024/10/apple-reports-fourth-quarter-results/"
+            },
+            {
+              "title": "Investor Relations - Apple",
+              "snippet": "Apple's conference call to discuss second fiscal quarter results and business updates is scheduled for Thursday, April 30, 2026 at 2:00 p.m. PT / 5:00 p.m. ET.",
+              "link": "https://investor.apple.com/investor-relations/default.aspx"
+            },
+            {
+              "title": "[PDF] Apple Inc.",
+              "snippet": "As a result, during the fourth quarter of 2024 the Company recorded a one-time income tax charge of $10.2 billion, net, which represents $15.8 ...",
+              "link": "https://www.apple.com/newsroom/pdfs/fy2024-q4/FY24_Q4_Consolidated_Financial_Statements.pdf"
+            },
+            {
+              "title": "Apple Full Year 2024 Earnings: In Line With Expectations",
+              "snippet": "Key Financial Results · Revenue: US$391.0b (up 2.0% from FY 2023). · Net income: US$93.7b (down 3.4% from FY 2023). · Profit margin: 24% (down from ...",
+              "link": "https://finance.yahoo.com/news/apple-full-2024-earnings-line-122506497.html"
+            },
+            {
+              "title": "[PDF] Apple Inc. on Form 10-K for the fiscal year ended September 28, 2024",
+              "snippet": "This includes press releases and other information about financial performance, information on environmental, social and governance matters, and ...",
+              "link": "https://s2.q4cdn.com/470004039/files/doc_earnings/2024/q4/filing/10-Q4-2024-As-Filed.pdf"
+            }
+          ],
+          "guardian_results": [
+            {
+              "title": "Apple at 50 quiz: top sellers, turkeys and turtlenecks",
+              "body": "In the 50 years since it was founded, Apple has long been seen as one of the most significant technology companies globally. The design and manufacturing decisions taken in Cupertino, California have affected product design across the world, helping usher in an era of ubiquitous touchscreen computing while insisting on exacting user experience design principles. How much do you know about the history of one of the most powerful computing companies on the planet? Test yourself with these 12 quest",
+              "link": "https://www.theguardian.com/technology/2026/apr/01/apple-at-50-quiz"
+            },
+            {
+              "title": "iPhone 17e review: Apple upgrades its cheapest new smartphone",
+              "body": "The cheapest new iPhone has been upgraded for this year with a faster chip, double the storage, automatic portraits and MagSafe, providing even more of the core Apple smartphone experience for less. The iPhone 17e is an upgraded version of the mid-range “e” line launched last year with the first iPhone 16e and is the latest member of the iPhone 17 family. It starts at £599 (€699/$599/A$999), undercutting the iPhone 17 and iPhone 16 by £200 and £100 respectively to be the cheapest new iPhone sold",
+              "link": "https://www.theguardian.com/technology/2026/mar/23/iphone-17e-review-apple-cheapest-new-smartphone-chip-magsafe-storage"
+            },
+            {
+              "title": "Meet the colour of the moment: apple green",
+              "body": "On the fashion colour wheel, green has long carried a reputation for being “tricky” – a shade that clashes with others and flatters only certain skin tones. Yet this year, a particular apple green has been steadily gaining popularity. It has appeared on catwalks and even on the red carpet, defying the old adage that red and green should never be seen. Arriving at the Berlin film festival, Pamela Anderson wore an apple-green wrap by Carolina Herrera over a dress in tonal pinks and greens. Amal Cl",
+              "link": "https://www.theguardian.com/fashion/2026/feb/20/colour-of-the-moment-apple-green-golden-globes-baftas"
+            },
+            {
+              "title": "Apple subsidiary fined by UK government over Moscow sanctions breach",
+              "body": "The UK government has fined a subsidiary of Apple £390,000 for breaching sanctions against Moscow over payments it made to a Russian streaming platform. Apple Distribution International (ADI), based in the Republic of Ireland, instructed an unnamed UK-based bank to make two payments to a company owned by a sanctioned Russian entity. The payments, worth more than £635,000 in total, were made to the streaming service Okko from an ADI bank account based in Britain. ADI is responsible for selling Ap",
+              "link": "https://www.theguardian.com/technology/2026/mar/30/apple-subsidiary-fine-uk-government-sanctions-russia"
+            },
+            {
+              "title": "Nicola Lamb’s recipes for toffee apple pie and apple crumb loaf",
+              "body": "It’s easy to forget just how extraordinary apples can be. Often relegated to less exciting regions of the fruit bowl, they actually come in a dizzying array of varieties – sharp, sweet, floral, crisp – and each with their own quirks. And now is the time to celebrate apples, so this week I’m giving them the attention they deserve in a no-bake toffee apple pie (banoffee’s autumn cousin) and a soft, cinnamon-spiced crumb cake. Toffee apple pie (pictured top) You will need a 23cm loose-bottomed tart",
+              "link": "https://www.theguardian.com/food/2025/oct/15/toffee-apple-pie-apple-crumb-loaf-recipes-nicola-lamb"
+            }
+          ],
+          "timestamp": "2026-04-14T08:55:00.154Z"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serper HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Serper Clean",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serper Clean": {
+      "main": [
+        [
+          {
+            "node": "Guardian - News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardian - News": {
+      "main": [
+        [
+          {
+            "node": "Clean Guardian Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Serper HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Guardian Output": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Alpha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alpha": {
+      "main": [
+        [
+          {
+            "node": "Final Bundle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Bundle": {
+      "main": [
+        [
+          {
+            "node": "Send to LangGraph",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6d6e24e4-5657-411a-85e4-ff51cf958fa4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "aa4546c929bc64958a002a65bfbfcc59859a03093d86b67ad6ca7665477db99f"
+  },
+  "id": "dtU5iKar4BxR54U0",
+  "tags": []
+}
