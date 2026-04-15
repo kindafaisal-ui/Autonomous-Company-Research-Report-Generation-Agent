@@ -27,7 +27,7 @@
           "parameters": [
             {
               "name": "X-API-KEY",
-              "value": "8db97d2b8af55c3bd0fb4653385bdb0dddb38b83"
+              "value": "YOUR_SERPER_API_KEY"
             }
           ]
         },
