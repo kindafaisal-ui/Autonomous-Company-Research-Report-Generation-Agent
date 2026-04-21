@@ -5,7 +5,7 @@ import sys
 import os
 
 app = Flask(__name__)
-PROJECT_DIR = '/Users/kindafaisalhotmail.com/Desktop/week5/project '
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 @app.route('/')
 def index():
