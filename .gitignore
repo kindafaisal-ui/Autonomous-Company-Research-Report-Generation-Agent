@@ -1,7 +1,6 @@
 .env
-logs/
+.venv
+__pycache__
+*.pyc
 outputs/
-agent/__pycache__/
-__pycache__/
-.DS_Store
-.venv/
+logs/
